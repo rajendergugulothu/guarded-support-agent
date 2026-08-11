@@ -17,6 +17,8 @@ from support_eval.llm import LLMClient
 from support_eval.models import Ticket
 from support_eval.policy import load_policy
 
+from support_eval.systems import TrustedSystems
+
 from .guardrail import guardrail_resolve
 from .tools import execute
 
@@ -41,25 +43,31 @@ def run(tickets_path="data/tickets.json", kb_path="config/kb.json",
 
     records = []
     for t in tickets:
+        systems = TrustedSystems()
         d = guardrail_resolve(policy, t, kb, client=client)
         self_escalated = "escalate" in d.trajectory.tools()
+        executed, denied = [], []
 
         if d.status == "APPROVED" and not self_escalated:
-            execute(d.trajectory)                       # dry-run tools
-            outcome = "AUTO-RESOLVED"
+            ex = execute(t, d.trajectory, systems)      # stepwise + runtime authorization
+            executed, denied = ex.executed, ex.denied
+            # a runtime denial means the pre-filter approved something authorization refused
+            outcome = "BLOCKED-AT-RUNTIME" if ex.had_denial else "AUTO-RESOLVED"
         else:
             outcome = "ESCALATED"
 
         rec = {"ticket": t.id, "category": t.category, "status": d.status, "outcome": outcome,
                "attempts": d.attempts, "reason": d.reason, "verdict": d.report.verdict(),
-               "plan": d.trajectory.tools(),
+               "plan": d.trajectory.tools(), "executed": executed, "denied": denied,
                "failures": [f.rule_id for f in d.report.failures()], "history": d.history}
         records.append(rec)
         with open(RUN_LOG, "a", encoding="utf-8") as f:
             f.write(json.dumps(rec) + "\n")
 
-        print(f"{t.id}  {t.category:<12} {outcome:<13} plan={d.trajectory.tools()}")
-        if outcome == "ESCALATED":
+        print(f"{t.id}  {t.category:<12} {outcome:<17} plan={d.trajectory.tools()}")
+        if denied:
+            print(f"     runtime authorization DENIED: {denied}")
+        elif outcome == "ESCALATED":
             print(f"     reason: {d.reason}; failures: {rec['failures']}")
 
     print("=" * 74)

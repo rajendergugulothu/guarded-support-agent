@@ -28,9 +28,25 @@ class MockBackend:
         self.last_latency = 0.0
         self.last_usage = None
         self.model = "mock"
+        self.total_cost = 0.0
+        self.calls = 0
 
     def complete(self, system, user):
         return ""
+
+
+def _extract_text(resp) -> str:
+    """Robustly pull text from the response instead of assuming content[0].text."""
+    parts = []
+    for block in getattr(resp, "content", []) or []:
+        if getattr(block, "type", None) == "text" and getattr(block, "text", None):
+            parts.append(block.text)
+        elif getattr(block, "text", None):
+            parts.append(block.text)
+    if parts:
+        return "\n".join(parts)
+    content = getattr(resp, "content", None)
+    return content[0].text if content and getattr(content[0], "text", None) else ""
 
 
 class AnthropicBackend:
@@ -42,6 +58,8 @@ class AnthropicBackend:
         self.model = os.environ.get("SUPPORT_MODEL", DEFAULT_MODEL)
         self.last_latency = 0.0
         self.last_usage = None
+        self.total_cost = 0.0     # cumulative across every call (planner + judge + retries)
+        self.calls = 0
 
     def complete(self, system, user):
         t0 = time.perf_counter()
@@ -49,7 +67,11 @@ class AnthropicBackend:
                                             messages=[{"role": "user", "content": user}])
         self.last_latency = time.perf_counter() - t0
         self.last_usage = getattr(resp, "usage", None)
-        return resp.content[0].text
+        c = cost_usd(self.last_usage, self.model)
+        if c:
+            self.total_cost += c
+        self.calls += 1
+        return _extract_text(resp)
 
 
 def _auto_backend():
@@ -87,6 +109,14 @@ class LLMClient:
     @property
     def last_cost(self):
         return cost_usd(getattr(self.backend, "last_usage", None), self.model)
+
+    @property
+    def total_cost(self) -> float:
+        return getattr(self.backend, "total_cost", 0.0)
+
+    @property
+    def calls(self) -> int:
+        return getattr(self.backend, "calls", 0)
 
     def complete(self, system, user):
         return self.backend.complete(system, user)

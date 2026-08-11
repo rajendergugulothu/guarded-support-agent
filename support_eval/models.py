@@ -42,6 +42,7 @@ class Ticket:
     text: str = ""            # free-text body (the injection surface)
     amount: float = 0.0       # refund amount if applicable
     order_id: str = ""
+    provided_identity: str = ""  # identity proof the requester supplied (checked vs trusted store)
     customer: Customer = field(default_factory=Customer)
 
     @staticmethod
@@ -49,7 +50,8 @@ class Ticket:
         return Ticket(
             id=d.get("id", ""), category=d.get("category", ""), intent=d.get("intent", ""),
             text=d.get("text", ""), amount=float(d.get("amount", 0) or 0),
-            order_id=d.get("order_id", ""), customer=Customer.from_dict(d.get("customer", {})),
+            order_id=d.get("order_id", ""), provided_identity=d.get("provided_identity", ""),
+            customer=Customer.from_dict(d.get("customer", {})),
         )
 
 

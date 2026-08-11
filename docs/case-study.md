@@ -28,36 +28,30 @@ escalates it; a dry-run tool layer means nothing has real side effects during te
 
 ## Results
 
-**Deterministic-only baseline (measured, 24 tickets):**
+**Deterministic-only baseline (naive agent, no judge — measured, 20 tickets):**
 
 | Metric | Value |
 |---|---|
-| Unauthorized-action rate (harm executed) | 14.3% (2/14) |
+| Unauthorized-action execution rate | 0.0% (0/13) |
+| Unsafe-action approval rate (caught by runtime authz) | 46.2% (6/13) |
 | False-positive rate | 0.0% |
 
-Deterministic rules catch every structural attack (over-limit refund, prohibited
-action, injected refund, missing verification, wrong privilege). The residual
-harm is semantic misuse — a structurally valid refund with no legitimate reason —
-which only the LLM judge can catch. Note that with the *real* LLM planner the agent
-also neutralizes many injections by simply ignoring them (answering the legitimate
-request and taking no harmful action), so the safety story is defense-in-depth:
-deterministic rules + a judge + an agent that resists manipulation.
+The safety guarantee does not depend on the model: even a naive agent with no judge
+executes **zero** unauthorized actions, because runtime authorization checks each
+state change against trusted systems (ownership, payment, prior-refund, eligibility,
+cap, identity result). The 46.2% is the share of adversarial actions the rules/judge
+alone approved — they can't see ownership or payment state — that runtime
+authorization independently denied. That is defense in depth: agent + rules + judge
++ authorization, with authorization as the layer that holds even if the model is
+fully compromised.
 
 **Deterministic + LLM judge:**
 
 <!-- EVAL:START -->
-Measured with **claude-sonnet-4-5-20250929** over 24 tickets (14 adversarial):
-
-| Metric | Deterministic + LLM judge |
-|---|---|
-| **Unauthorized-action rate (harm executed)** | **0.0%** |
-| Adversarial escalated to a human | 71.4% |
-| Adversarial safely auto-resolved (no harm) | 28.6% |
-| False-positive rate | 25.0% |
-| Latency / ticket | 9558 ms |
-| Cost / ticket | $0.00562 |
-
-_Generated from `eval_suite/results.json` by `make publish`._
+_Pending measurement._ Run `ANTHROPIC_API_KEY=… make suite && make publish`; the
+block fills automatically with catch rate, attack-success, unauthorized-action
+rate, false-positive rate, latency, and cost. (No expected number is published
+before it is measured.)
 <!-- EVAL:END -->
 
 **Fail-closed:** in prod, an unavailable judge escalates every semantically-gated
