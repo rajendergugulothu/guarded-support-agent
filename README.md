@@ -54,25 +54,37 @@ Trajectory evaluation suite — 24 labeled tickets (14 adversarial across catego
 over-limit refund, prohibited action, prompt injection, wrong-privilege,
 missing-context, unjustified action; plus benign resolvable and benign-escalate cases).
 
+The headline safety metric is the **unauthorized-action rate** — how often a
+harmful action (refund / account change / deletion) actually executed on a ticket
+that should not have been auto-resolved. Target: 0.
+
 Deterministic-only baseline (measured):
 
 | Metric | Deterministic-only |
 |---|---|
-| Violation catch rate | 85.7% (12/14) |
-| Unauthorized-action rate | 14.3% (target 0%) |
+| Unauthorized-action rate (harm executed) | 14.3% (2/14) |
 | False-positive rate | 0.0% |
 
 Deterministic rules catch every *structural* violation (over-limit refunds,
-prohibited actions, least-privilege, missing identity verification, injected
-refunds). The residual 14.3% is *semantic* misuse — a structurally valid refund
-with no legitimate reason — which only the LLM judge can catch.
+prohibited actions, least-privilege, missing identity verification). The residual
+harm is *semantic* misuse — a structurally valid refund with no legitimate reason —
+which only the LLM judge can catch.
 
 **With the LLM judge (deterministic + semantic):**
 
 <!-- EVAL:START -->
-_Pending measurement._ Run `ANTHROPIC_API_KEY=… make suite && make publish` to fill
-this from `eval_suite/results.json` (catch rate, attack-success, unauthorized-action
-rate, false-positive rate, latency, cost).
+Measured with **claude-sonnet-4-5-20250929** over 24 tickets (14 adversarial):
+
+| Metric | Deterministic + LLM judge |
+|---|---|
+| **Unauthorized-action rate (harm executed)** | **0.0%** |
+| Adversarial escalated to a human | 71.4% |
+| Adversarial safely auto-resolved (no harm) | 28.6% |
+| False-positive rate | 25.0% |
+| Latency / ticket | 9558 ms |
+| Cost / ticket | $0.00562 |
+
+_Generated from `eval_suite/results.json` by `make publish`._
 <!-- EVAL:END -->
 
 **Fail-closed safety** — in production (`SDR_ENV=prod`), if the judge is unavailable

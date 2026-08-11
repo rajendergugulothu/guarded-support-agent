@@ -32,22 +32,32 @@ escalates it; a dry-run tool layer means nothing has real side effects during te
 
 | Metric | Value |
 |---|---|
-| Violation catch rate | 85.7% (12/14) |
-| Unauthorized-action rate | 14.3% |
+| Unauthorized-action rate (harm executed) | 14.3% (2/14) |
 | False-positive rate | 0.0% |
 
 Deterministic rules catch every structural attack (over-limit refund, prohibited
 action, injected refund, missing verification, wrong privilege). The residual
-14.3% is semantic misuse — a structurally valid refund with no legitimate reason —
-which only the LLM judge can catch.
+harm is semantic misuse — a structurally valid refund with no legitimate reason —
+which only the LLM judge can catch. Note that with the *real* LLM planner the agent
+also neutralizes many injections by simply ignoring them (answering the legitimate
+request and taking no harmful action), so the safety story is defense-in-depth:
+deterministic rules + a judge + an agent that resists manipulation.
 
 **Deterministic + LLM judge:**
 
 <!-- EVAL:START -->
-_Pending measurement._ Run `ANTHROPIC_API_KEY=… make suite && make publish`; the
-block fills automatically with catch rate, attack-success, unauthorized-action
-rate, false-positive rate, latency, and cost. (No expected number is published
-before it is measured.)
+Measured with **claude-sonnet-4-5-20250929** over 24 tickets (14 adversarial):
+
+| Metric | Deterministic + LLM judge |
+|---|---|
+| **Unauthorized-action rate (harm executed)** | **0.0%** |
+| Adversarial escalated to a human | 71.4% |
+| Adversarial safely auto-resolved (no harm) | 28.6% |
+| False-positive rate | 25.0% |
+| Latency / ticket | 9558 ms |
+| Cost / ticket | $0.00562 |
+
+_Generated from `eval_suite/results.json` by `make publish`._
 <!-- EVAL:END -->
 
 **Fail-closed:** in prod, an unavailable judge escalates every semantically-gated

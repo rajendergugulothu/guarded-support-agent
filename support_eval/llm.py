@@ -7,7 +7,9 @@ from __future__ import annotations
 import os
 import time
 
-PRICES = {"claude-3-5-sonnet-latest": (3.0, 15.0), "claude-3-5-haiku-latest": (0.80, 4.0), "default": (3.0, 15.0)}
+# Approx USD per 1M tokens (input, output). Override SUPPORT_MODEL for your account's models.
+PRICES = {"claude-sonnet-4-5-20250929": (3.0, 15.0), "default": (3.0, 15.0)}
+DEFAULT_MODEL = "claude-sonnet-4-5-20250929"
 
 
 def cost_usd(usage, model: str):
@@ -37,7 +39,7 @@ class AnthropicBackend:
     def __init__(self):
         import anthropic
         self.client = anthropic.Anthropic()
-        self.model = os.environ.get("SUPPORT_MODEL", "claude-3-5-sonnet-latest")
+        self.model = os.environ.get("SUPPORT_MODEL", DEFAULT_MODEL)
         self.last_latency = 0.0
         self.last_usage = None
 
