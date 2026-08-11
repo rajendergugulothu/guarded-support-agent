@@ -1,0 +1,3 @@
+# Core runs on the Python standard library alone (mock LLM).
+anthropic>=0.34.0   # optional: real LLM planner + judge (set ANTHROPIC_API_KEY)
+# dev: pytest
